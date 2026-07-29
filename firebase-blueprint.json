@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "admin": {
+      "title": "Admin Credentials",
+      "description": "Stores admin login credentials and configuration",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "lastLogin": { "type": "string" }
+      },
+      "required": ["username", "password"]
+    },
+    "banners": {
+      "title": "Banners",
+      "description": "Home page image banners and promotions",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "targetUrl": { "type": "string" },
+        "isVisible": { "type": "boolean" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "imageUrl", "isVisible"]
+    },
+    "subjects": {
+      "title": "Subjects",
+      "description": "Academic subjects list",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "description": { "type": "string" },
+        "order": { "type": "number" },
+        "chapterCount": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "chapters": {
+      "title": "Chapters",
+      "description": "Chapters under subjects",
+      "type": "object",
+      "properties": {
+        "subjectId": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "chapterName": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "order": { "type": "number" },
+        "pdfUrl": { "type": "string" },
+        "pdfTitle": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["subjectId", "chapterName"]
+    },
+    "notes": {
+      "title": "Notes",
+      "description": "Chapter notes and study materials",
+      "type": "object",
+      "properties": {
+        "chapterId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["chapterId", "title", "content"]
+    },
+    "questions": {
+      "title": "Questions",
+      "description": "Chapter questions, MCQs, and Madhyamik suggestions",
+      "type": "object",
+      "properties": {
+        "chapterId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "questionText": { "type": "string" },
+        "answerText": { "type": "string" },
+        "category": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "correctOptionIndex": { "type": "number" },
+        "marks": { "type": "number" },
+        "year": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["chapterId", "questionText", "category"]
+    },
+    "pdfLinks": {
+      "title": "PDF Links",
+      "description": "Downloadable PDF resources for chapters",
+      "type": "object",
+      "properties": {
+        "chapterId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "size": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["chapterId", "title", "url"]
+    },
+    "saved": {
+      "title": "Saved Items",
+      "description": "Saved items or bookmarks collection",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string" },
+        "itemType": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "savedAt": { "type": "string" }
+      },
+      "required": ["itemId", "itemType"]
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "contactEmail": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "noticeBanner": { "type": "string" },
+        "theme": { "type": "string" },
+        "aboutText": { "type": "string" }
+      }
+    }
+  }
+}

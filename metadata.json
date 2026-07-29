@@ -1,0 +1,6 @@
+{
+  "name": "Towfik Edutips",
+  "description": "A modern, mobile-first WBBSE Madhyamik education platform and study resource manager.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
