@@ -40,6 +40,8 @@ import com.towfikedutips.app.model.Note
 import com.towfikedutips.app.model.Question
 import com.towfikedutips.app.model.Subject
 import com.towfikedutips.app.ui.navigation.Screen
+import com.towfikedutips.app.ui.screen.AdminScreen
+import com.towfikedutips.app.ui.screen.AdminDashboardScreen
 import com.towfikedutips.app.ui.screen.AiChatScreen
 import com.towfikedutips.app.ui.screen.ChapterDetailScreen
 import com.towfikedutips.app.ui.screen.HomeScreen
@@ -265,6 +267,14 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
 
             composable(Screen.Chat.route) {
                 AiChatScreen(navController = navController)
+            }
+
+            composable(Screen.Admin.route) {
+                AdminScreen(navController = navController)
+            }
+
+            composable(Screen.AdminDashboard.route) {
+                AdminDashboardScreen(navController = navController)
             }
         }
     }
