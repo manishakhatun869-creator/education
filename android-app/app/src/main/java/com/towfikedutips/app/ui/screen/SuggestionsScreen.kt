@@ -302,7 +302,7 @@ fun SuggestionsScreen(
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFF1F2), contentColor = Color(0xFFE11D48)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.primary),
                                     modifier = Modifier.height(30.dp),
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
