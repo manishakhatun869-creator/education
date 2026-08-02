@@ -73,6 +73,13 @@ fun HomeScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+                    IconButton(onClick = { navController.navigate(Screen.AdminLogin.route) }) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Admin Login",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface

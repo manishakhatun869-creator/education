@@ -9,4 +9,6 @@ sealed class Screen(val route: String) {
         fun createRoute(chapterId: String) = "chapter_detail/$chapterId"
     }
     object Chat : Screen("chat")
+    object AdminLogin : Screen("admin_login")
+    object AdminDashboard : Screen("admin_dashboard")
 }
