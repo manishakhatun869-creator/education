@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import com.towfikedutips.app.ui.screen.SavedScreen
 import com.towfikedutips.app.ui.screen.SubjectsScreen
 import com.towfikedutips.app.ui.screen.SuggestionsScreen
 import com.towfikedutips.app.ui.screen.DownloadsScreen
+import com.towfikedutips.app.ui.screen.PdfViewerScreen
 import com.towfikedutips.app.ui.screen.AdminLoginScreen
 import com.towfikedutips.app.ui.screen.AdminDashboardScreen
 import com.towfikedutips.app.ui.theme.TowfikEdutipsTheme
@@ -192,12 +194,19 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
 
             if (showBottomNav) {
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     bottomNavItems.forEach { item ->
                         val isSelected = currentRoute == item.route
                         NavigationBarItem(
                             selected = isSelected,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = Color.White,
+                                unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                indicatorColor = Color.White
+                            ),
                             onClick = {
                                 navController.navigate(item.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -264,6 +273,22 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
                 SavedScreen(
                     navController = navController,
                     localStorageManager = localStorageManager
+                )
+            }
+
+            composable(
+                route = Screen.PdfViewer.route,
+                arguments = listOf(
+                    navArgument("title") { type = NavType.StringType },
+                    navArgument("chapterId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val title = backStackEntry.arguments?.getString("title") ?: "Study Material"
+                val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+                PdfViewerScreen(
+                    navController = navController,
+                    title = title,
+                    chapterId = chapterId
                 )
             }
 

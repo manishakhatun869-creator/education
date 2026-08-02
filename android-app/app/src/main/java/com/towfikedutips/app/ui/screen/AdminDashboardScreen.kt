@@ -30,10 +30,7 @@ import com.towfikedutips.app.model.Subject
 import com.towfikedutips.app.model.AppSettings
 
 enum class AdminTab(val title: String) {
-    SUBJECTS("Subjects"),
-    CHAPTERS("Chapters"),
-    NOTES("Notes"),
-    QUESTIONS("Questions"),
+    CONTENT("Content Wizard"),
     BANNERS("Banners"),
     SETTINGS("Settings")
 }
@@ -42,9 +39,13 @@ enum class AdminTab(val title: String) {
 @Composable
 fun AdminDashboardScreen(navController: NavController) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableStateOf(AdminTab.SUBJECTS) }
+    var selectedTab by remember { mutableStateOf(AdminTab.CONTENT) }
 
     val firestore = remember { com.towfikedutips.app.data.FirestoreProvider.getFirestore(context) }
+
+    // Navigation state in content wizard
+    var activeSubject by remember { mutableStateOf<Subject?>(null) }
+    var activeChapter by remember { mutableStateOf<Chapter?>(null) }
 
     // Live state lists
     val subjectsList = remember { mutableStateListOf<Subject>() }
@@ -144,52 +145,66 @@ fun AdminDashboardScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Admin Panel Dashboard", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text("Admin Panel Dashboard", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 actions = {
                     IconButton(onClick = { fetchAllData() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             )
         },
         floatingActionButton = {
-            // Settings doesn't need a float add button as it's a static panel configuration
-            if (selectedTab != AdminTab.SETTINGS) {
+            // Context-based FAB creation logic for nested content management
+            if (selectedTab == AdminTab.CONTENT) {
+                if (activeSubject == null) {
+                    FloatingActionButton(
+                        onClick = {
+                            editingSubject = null
+                            showAddEditSubjectDialog = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ) {
+                        Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Subject", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else if (activeChapter == null) {
+                    FloatingActionButton(
+                        onClick = {
+                            editingChapter = null
+                            showAddEditChapterDialog = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ) {
+                        Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Chapter", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else if (selectedTab == AdminTab.BANNERS) {
                 FloatingActionButton(
                     onClick = {
-                        when (selectedTab) {
-                            AdminTab.SUBJECTS -> {
-                                editingSubject = null
-                                showAddEditSubjectDialog = true
-                            }
-                            AdminTab.CHAPTERS -> {
-                                editingChapter = null
-                                showAddEditChapterDialog = true
-                            }
-                            AdminTab.NOTES -> {
-                                editingNote = null
-                                showAddEditNoteDialog = true
-                            }
-                            AdminTab.QUESTIONS -> {
-                                editingQuestion = null
-                                showAddEditQuestionDialog = true
-                            }
-                            AdminTab.BANNERS -> {
-                                editingBanner = null
-                                showAddEditBannerDialog = true
-                            }
-                            else -> {}
-                        }
+                        editingBanner = null
+                        showAddEditBannerDialog = true
                     },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add New Item")
+                    Icon(Icons.Default.Add, contentDescription = "Add Banner")
                 }
             }
         }
@@ -200,16 +215,15 @@ fun AdminDashboardScreen(navController: NavController) {
                 .padding(paddingValues)
         ) {
             // Horizontal Tab Row
-            ScrollableTabRow(
+            TabRow(
                 selectedTabIndex = selectedTab.ordinal,
-                edgePadding = 16.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 AdminTab.values().forEach { tab ->
                     Tab(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
-                        text = { Text(tab.title, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                        text = { Text(tab.title, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     )
                 }
             }
@@ -226,88 +240,244 @@ fun AdminDashboardScreen(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     when (selectedTab) {
-                        AdminTab.SUBJECTS -> {
-                            if (subjectsList.isEmpty()) {
-                                item { Text("No subjects found.", color = Color.Gray, fontSize = 12.sp) }
-                            }
-                            items(subjectsList) { subject ->
-                                SubjectAdminRow(
-                                    subject = subject,
-                                    onEdit = {
-                                        editingSubject = subject
-                                        showAddEditSubjectDialog = true
-                                    },
-                                    onDelete = {
-                                        firestore.collection("subjects").document(subject.id).delete()
-                                            .addOnSuccessListener {
-                                                Toast.makeText(context, "Subject deleted", Toast.LENGTH_SHORT).show()
-                                                fetchAllData()
+                        AdminTab.CONTENT -> {
+                            if (activeSubject == null) {
+                                // LEVEL 1: Subjects List
+                                item {
+                                    Text("Explore Subjects", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                                if (subjectsList.isEmpty()) {
+                                    item { Text("No subjects found. Create one to begin.", color = Color.Gray, fontSize = 12.sp) }
+                                }
+                                items(subjectsList) { subject ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { activeSubject = subject },
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                                Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Column {
+                                                    Text(subject.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    Text("Code: ${subject.code} | Order: ${subject.order}", color = Color.Gray, fontSize = 11.sp)
+                                                }
                                             }
-                                    }
-                                )
-                            }
-                        }
-                        AdminTab.CHAPTERS -> {
-                            if (chaptersList.isEmpty()) {
-                                item { Text("No chapters found. Add one first.", color = Color.Gray, fontSize = 12.sp) }
-                            }
-                            items(chaptersList) { chapter ->
-                                ChapterAdminRow(
-                                    chapter = chapter,
-                                    onEdit = {
-                                        editingChapter = chapter
-                                        showAddEditChapterDialog = true
-                                    },
-                                    onDelete = {
-                                        firestore.collection("chapters").document(chapter.id).delete()
-                                            .addOnSuccessListener {
-                                                Toast.makeText(context, "Chapter deleted", Toast.LENGTH_SHORT).show()
-                                                fetchAllData()
+                                            Row {
+                                                IconButton(onClick = {
+                                                    editingSubject = subject
+                                                    showAddEditSubjectDialog = true
+                                                }) {
+                                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                                IconButton(onClick = {
+                                                    firestore.collection("subjects").document(subject.id).delete()
+                                                        .addOnSuccessListener {
+                                                            Toast.makeText(context, "Subject deleted", Toast.LENGTH_SHORT).show()
+                                                            fetchAllData()
+                                                        }
+                                                }) {
+                                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                                }
                                             }
+                                        }
                                     }
-                                )
-                            }
-                        }
-                        AdminTab.NOTES -> {
-                            if (notesList.isEmpty()) {
-                                item { Text("No notes found. Add one first.", color = Color.Gray, fontSize = 12.sp) }
-                            }
-                            items(notesList) { note ->
-                                NoteAdminRow(
-                                    note = note,
-                                    onEdit = {
-                                        editingNote = note
-                                        showAddEditNoteDialog = true
-                                    },
-                                    onDelete = {
-                                        firestore.collection("notes").document(note.id).delete()
-                                            .addOnSuccessListener {
-                                                Toast.makeText(context, "Note deleted", Toast.LENGTH_SHORT).show()
-                                                fetchAllData()
+                                }
+                            } else if (activeChapter == null) {
+                                // LEVEL 2: Chapters List of Active Subject
+                                val subj = activeSubject!!
+                                val subjChapters = chaptersList.filter { it.subjectId == subj.id }
+
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Button(
+                                            onClick = { activeSubject = null },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray.copy(alpha = 0.3f), contentColor = Color.DarkGray),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("All Subjects", fontSize = 11.sp)
                                             }
+                                        }
+                                        Text(subj.name, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                                     }
-                                )
-                            }
-                        }
-                        AdminTab.QUESTIONS -> {
-                            if (questionsList.isEmpty()) {
-                                item { Text("No questions found. Add one first.", color = Color.Gray, fontSize = 12.sp) }
-                            }
-                            items(questionsList) { question ->
-                                QuestionAdminRow(
-                                    question = question,
-                                    onEdit = {
-                                        editingQuestion = question
-                                        showAddEditQuestionDialog = true
-                                    },
-                                    onDelete = {
-                                        firestore.collection("questions").document(question.id).delete()
-                                            .addOnSuccessListener {
-                                                Toast.makeText(context, "Question deleted", Toast.LENGTH_SHORT).show()
-                                                fetchAllData()
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                }
+
+                                if (subjChapters.isEmpty()) {
+                                    item { Text("No chapters found. Add a chapter using the + button.", color = Color.Gray, fontSize = 12.sp) }
+                                }
+                                items(subjChapters) { chapter ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { activeChapter = chapter },
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                                Icon(Icons.Default.Book, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Column {
+                                                    Text(chapter.chapterName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    Text("Order: ${chapter.order}", color = Color.Gray, fontSize = 11.sp)
+                                                }
                                             }
+                                            Row {
+                                                IconButton(onClick = {
+                                                    editingChapter = chapter
+                                                    showAddEditChapterDialog = true
+                                                }) {
+                                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                                IconButton(onClick = {
+                                                    firestore.collection("chapters").document(chapter.id).delete()
+                                                        .addOnSuccessListener {
+                                                            Toast.makeText(context, "Chapter deleted", Toast.LENGTH_SHORT).show()
+                                                            fetchAllData()
+                                                        }
+                                                }) {
+                                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                                }
+                                            }
+                                        }
                                     }
-                                )
+                                }
+                            } else {
+                                // LEVEL 3: Notes & Questions List of Active Chapter
+                                val ch = activeChapter!!
+                                val chNotes = notesList.filter { it.chapterId == ch.id }
+                                val chQuestions = questionsList.filter { it.chapterId == ch.id }
+
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Button(
+                                            onClick = { activeChapter = null },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray.copy(alpha = 0.3f), contentColor = Color.DarkGray),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("All Chapters", fontSize = 11.sp)
+                                            }
+                                        }
+                                        Text(ch.chapterName, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 12.dp))
+                                    }
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                }
+
+                                // 3A. Notes Section Header
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("📚 Notes & Summaries (${chNotes.size})", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                                        Button(
+                                            onClick = {
+                                                editingNote = null
+                                                showAddEditNoteDialog = true
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.primary),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(30.dp)
+                                        ) {
+                                            Text("+ Add Note", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+
+                                if (chNotes.isEmpty()) {
+                                    item { Text("No notes in this chapter yet.", color = Color.Gray, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp)) }
+                                }
+
+                                items(chNotes) { note ->
+                                    NoteAdminRow(
+                                        note = note,
+                                        onEdit = {
+                                            editingNote = note
+                                            showAddEditNoteDialog = true
+                                        },
+                                        onDelete = {
+                                            firestore.collection("notes").document(note.id).delete()
+                                                .addOnSuccessListener {
+                                                    Toast.makeText(context, "Note deleted", Toast.LENGTH_SHORT).show()
+                                                    fetchAllData()
+                                                }
+                                        }
+                                    )
+                                }
+
+                                // 3B. Questions Section Header
+                                item {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("❓ Questions & Answers (${chQuestions.size})", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                                        Button(
+                                            onClick = {
+                                                editingQuestion = null
+                                                showAddEditQuestionDialog = true
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.primary),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(30.dp)
+                                        ) {
+                                            Text("+ Add Q&A", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+
+                                if (chQuestions.isEmpty()) {
+                                    item { Text("No questions in this chapter yet.", color = Color.Gray, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp)) }
+                                }
+
+                                items(chQuestions) { question ->
+                                    QuestionAdminRow(
+                                        question = question,
+                                        onEdit = {
+                                            editingQuestion = question
+                                            showAddEditQuestionDialog = true
+                                        },
+                                        onDelete = {
+                                            firestore.collection("questions").document(question.id).delete()
+                                                .addOnSuccessListener {
+                                                    Toast.makeText(context, "Question deleted", Toast.LENGTH_SHORT).show()
+                                                    fetchAllData()
+                                                }
+                                        }
+                                    )
+                                }
                             }
                         }
                         AdminTab.BANNERS -> {
@@ -374,7 +544,7 @@ fun AdminDashboardScreen(navController: NavController) {
         if (showAddEditSubjectDialog) {
             var name by remember { mutableStateOf(editingSubject?.name ?: "") }
             var code by remember { mutableStateOf(editingSubject?.code ?: "") }
-            var color by remember { mutableStateOf(editingSubject?.color ?: "#10B981") }
+            var color by remember { mutableStateOf(editingSubject?.color ?: "#6B4EFF") }
             var description by remember { mutableStateOf(editingSubject?.description ?: "") }
             var order by remember { mutableStateOf(editingSubject?.order?.toString() ?: "0") }
 
@@ -385,7 +555,7 @@ fun AdminDashboardScreen(navController: NavController) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Subject Name") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Code (e.g. BEN, ENG)") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color HEX (e.g. #10B981)") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color HEX (e.g. #6B4EFF)") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Order") }, modifier = Modifier.fillMaxWidth())
                     }
@@ -424,7 +594,7 @@ fun AdminDashboardScreen(navController: NavController) {
         // ADD / EDIT CHAPTER DIALOG
         // ===================================
         if (showAddEditChapterDialog) {
-            var selectedSubject by remember { mutableStateOf(subjectsList.find { it.id == (editingChapter?.subjectId ?: "") } ?: subjectsList.firstOrNull()) }
+            val sub = activeSubject!!
             var name by remember { mutableStateOf(editingChapter?.chapterName ?: "") }
             var desc by remember { mutableStateOf(editingChapter?.description ?: "") }
             var imageUrl by remember { mutableStateOf(editingChapter?.imageUrl ?: "") }
@@ -434,26 +604,9 @@ fun AdminDashboardScreen(navController: NavController) {
 
             AlertDialog(
                 onDismissRequest = { showAddEditChapterDialog = false },
-                title = { Text(if (editingChapter == null) "Add Chapter" else "Edit Chapter") },
+                title = { Text(if (editingChapter == null) "Add Chapter to ${sub.name}" else "Edit Chapter") },
                 text = {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 350.dp)) {
-                        item {
-                            Text("Select Subject:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            subjectsList.forEach { subj ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { selectedSubject = subj }
-                                        .background(if (selectedSubject?.id == subj.id) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                                        .padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = selectedSubject?.id == subj.id, onClick = { selectedSubject = subj })
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(subj.name, fontSize = 12.sp)
-                                }
-                            }
-                        }
                         item { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Chapter Name") }, modifier = Modifier.fillMaxWidth()) }
                         item { OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth()) }
                         item { OutlinedTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("Image URL") }, modifier = Modifier.fillMaxWidth()) }
@@ -464,11 +617,6 @@ fun AdminDashboardScreen(navController: NavController) {
                 },
                 confirmButton = {
                     Button(onClick = {
-                        val sub = selectedSubject
-                        if (sub == null) {
-                            Toast.makeText(context, "Please select a subject first.", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
                         val o = order.toIntOrNull() ?: 0
                         val data = mapOf(
                             "subjectId" to sub.id,
@@ -505,36 +653,18 @@ fun AdminDashboardScreen(navController: NavController) {
         // ADD / EDIT NOTE DIALOG
         // ===================================
         if (showAddEditNoteDialog) {
-            var selectedChapter by remember { mutableStateOf(chaptersList.find { it.id == (editingNote?.chapterId ?: "") } ?: chaptersList.firstOrNull()) }
+            val ch = activeChapter!!
             var title by remember { mutableStateOf(editingNote?.title ?: "") }
             var content by remember { mutableStateOf(editingNote?.content ?: "") }
             var type by remember { mutableStateOf(editingNote?.type ?: "summary") }
-            var order by remember { mutableStateOf(editingNote?.order?.toString() ?: "0") }
 
             AlertDialog(
                 onDismissRequest = { showAddEditNoteDialog = false },
-                title = { Text(if (editingNote == null) "Add Note" else "Edit Note") },
+                title = { Text(if (editingNote == null) "Add Note to ${ch.chapterName}" else "Edit Note") },
                 text = {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 350.dp)) {
-                        item {
-                            Text("Select Chapter:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            chaptersList.forEach { ch ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { selectedChapter = ch }
-                                        .background(if (selectedChapter?.id == ch.id) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                                        .padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = selectedChapter?.id == ch.id, onClick = { selectedChapter = ch })
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(ch.chapterName, fontSize = 12.sp)
-                                }
-                            }
-                        }
                         item { OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Note Title") }, modifier = Modifier.fillMaxWidth()) }
-                        item { OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Content Body") }, modifier = Modifier.fillMaxWidth().height(100.dp)) }
+                        item { OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Content Body") }, modifier = Modifier.fillMaxWidth().height(120.dp)) }
                         item {
                             Text("Note Type:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             val noteTypes = listOf("summary", "formula", "important", "revision")
@@ -563,24 +693,25 @@ fun AdminDashboardScreen(navController: NavController) {
                                 }
                             }
                         }
-                        item { OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Order") }, modifier = Modifier.fillMaxWidth()) }
                     }
                 },
                 confirmButton = {
                     Button(onClick = {
-                        val ch = selectedChapter
-                        if (ch == null) {
-                            Toast.makeText(context, "Please select a chapter first.", Toast.LENGTH_SHORT).show()
-                            return@Button
+                        // Sequential ordering logic: calculate next order number
+                        val nextOrder = if (editingNote == null) {
+                            val notesOfCh = notesList.filter { it.chapterId == ch.id }
+                            (notesOfCh.maxOfOrNull { it.order } ?: 0) + 1
+                        } else {
+                            editingNote!!.order
                         }
-                        val o = order.toIntOrNull() ?: 0
+
                         val data = mapOf(
                             "chapterId" to ch.id,
                             "subjectId" to ch.subjectId,
                             "title" to title,
                             "content" to content,
                             "type" to type,
-                            "order" to o,
+                            "order" to nextOrder,
                             "createdAt" to (editingNote?.createdAt ?: java.util.Date().toString())
                         )
                         val task = if (editingNote == null) {
@@ -589,7 +720,7 @@ fun AdminDashboardScreen(navController: NavController) {
                             firestore.collection("notes").document(editingNote!!.id).set(data)
                         }
                         task.addOnSuccessListener {
-                            Toast.makeText(context, "Note saved", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Note saved sequentially", Toast.LENGTH_SHORT).show()
                             showAddEditNoteDialog = false
                             fetchAllData()
                         }
@@ -607,35 +738,24 @@ fun AdminDashboardScreen(navController: NavController) {
         // ADD / EDIT QUESTION DIALOG
         // ===================================
         if (showAddEditQuestionDialog) {
-            var selectedChapter by remember { mutableStateOf(chaptersList.find { it.id == (editingQuestion?.chapterId ?: "") } ?: chaptersList.firstOrNull()) }
+            val ch = activeChapter!!
             var questionText by remember { mutableStateOf(editingQuestion?.questionText ?: "") }
             var answerText by remember { mutableStateOf(editingQuestion?.answerText ?: "") }
             var category by remember { mutableStateOf(editingQuestion?.category ?: "mcq") }
             var marks by remember { mutableStateOf(editingQuestion?.marks?.toString() ?: "1") }
-            var order by remember { mutableStateOf(editingQuestion?.order?.toString() ?: "0") }
+
+            // MCQ Specific States
+            var optA by remember { mutableStateOf(editingQuestion?.options?.getOrNull(0) ?: "") }
+            var optB by remember { mutableStateOf(editingQuestion?.options?.getOrNull(1) ?: "") }
+            var optC by remember { mutableStateOf(editingQuestion?.options?.getOrNull(2) ?: "") }
+            var optD by remember { mutableStateOf(editingQuestion?.options?.getOrNull(3) ?: "") }
+            var selectedCorrectIndex by remember { mutableStateOf(editingQuestion?.correctOptionIndex ?: 0) }
 
             AlertDialog(
                 onDismissRequest = { showAddEditQuestionDialog = false },
-                title = { Text(if (editingQuestion == null) "Add Question" else "Edit Question") },
+                title = { Text(if (editingQuestion == null) "Add Question to ${ch.chapterName}" else "Edit Question") },
                 text = {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 350.dp)) {
-                        item {
-                            Text("Select Chapter:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            chaptersList.forEach { ch ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { selectedChapter = ch }
-                                        .background(if (selectedChapter?.id == ch.id) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                                        .padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = selectedChapter?.id == ch.id, onClick = { selectedChapter = ch })
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(ch.chapterName, fontSize = 12.sp)
-                                }
-                            }
-                        }
                         item { OutlinedTextField(value = questionText, onValueChange = { questionText = it }, label = { Text("Question Text") }, modifier = Modifier.fillMaxWidth()) }
                         item { OutlinedTextField(value = answerText, onValueChange = { answerText = it }, label = { Text("Answer Text") }, modifier = Modifier.fillMaxWidth()) }
                         item {
@@ -667,18 +787,51 @@ fun AdminDashboardScreen(navController: NavController) {
                                 }
                             }
                         }
+
+                        // If the category is MCQ, we securely render 4 options inputs
+                        if (category == "mcq") {
+                            item {
+                                Text("MCQ Options Details:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            item { OutlinedTextField(value = optA, onValueChange = { optA = it }, label = { Text("Option A") }, modifier = Modifier.fillMaxWidth()) }
+                            item { OutlinedTextField(value = optB, onValueChange = { optB = it }, label = { Text("Option B") }, modifier = Modifier.fillMaxWidth()) }
+                            item { OutlinedTextField(value = optC, onValueChange = { optC = it }, label = { Text("Option C") }, modifier = Modifier.fillMaxWidth()) }
+                            item { OutlinedTextField(value = optD, onValueChange = { optD = it }, label = { Text("Option D") }, modifier = Modifier.fillMaxWidth()) }
+                            item {
+                                Text("Correct Answer Index (A:0, B:1, C:2, D:3):", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    listOf("A", "B", "C", "D").forEachIndexed { index, label ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable { selectedCorrectIndex = index }
+                                        ) {
+                                            RadioButton(selected = selectedCorrectIndex == index, onClick = { selectedCorrectIndex = index })
+                                            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         item { OutlinedTextField(value = marks, onValueChange = { marks = it }, label = { Text("Marks") }, modifier = Modifier.fillMaxWidth()) }
-                        item { OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Order") }, modifier = Modifier.fillMaxWidth()) }
                     }
                 },
                 confirmButton = {
                     Button(onClick = {
-                        val ch = selectedChapter
-                        if (ch == null) {
-                            Toast.makeText(context, "Please select a chapter first.", Toast.LENGTH_SHORT).show()
-                            return@Button
+                        // Sequential ordering logic: calculate next order number for Question
+                        val nextOrder = if (editingQuestion == null) {
+                            val questionsOfCh = questionsList.filter { it.chapterId == ch.id }
+                            (questionsOfCh.maxOfOrNull { it.order } ?: 0) + 1
+                        } else {
+                            editingQuestion!!.order
                         }
-                        val o = order.toIntOrNull() ?: 0
+
+                        val optionsList = if (category == "mcq") listOf(optA, optB, optC, optD) else null
+                        val correctIdx = if (category == "mcq") selectedCorrectIndex else null
+
                         val m = marks.toIntOrNull() ?: 1
                         val data = mapOf(
                             "chapterId" to ch.id,
@@ -686,8 +839,10 @@ fun AdminDashboardScreen(navController: NavController) {
                             "questionText" to questionText,
                             "answerText" to answerText,
                             "category" to category,
+                            "options" to optionsList,
+                            "correctOptionIndex" to correctIdx,
                             "marks" to m,
-                            "order" to o,
+                            "order" to nextOrder,
                             "createdAt" to (editingQuestion?.createdAt ?: java.util.Date().toString())
                         )
                         val task = if (editingQuestion == null) {
@@ -696,7 +851,7 @@ fun AdminDashboardScreen(navController: NavController) {
                             firestore.collection("questions").document(editingQuestion!!.id).set(data)
                         }
                         task.addOnSuccessListener {
-                            Toast.makeText(context, "Question saved", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Question saved sequentially", Toast.LENGTH_SHORT).show()
                             showAddEditQuestionDialog = false
                             fetchAllData()
                         }
@@ -857,66 +1012,6 @@ fun AppSettingsPanel(settings: AppSettings, onSave: (AppSettings) -> Unit) {
 }
 
 @Composable
-fun SubjectAdminRow(subject: Subject, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(subject.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Code: ${subject.code} | Order: ${subject.order}", color = Color.Gray, fontSize = 11.sp)
-            }
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ChapterAdminRow(chapter: Chapter, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(chapter.chapterName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Subject: ${chapter.subjectName ?: "None"} | Order: ${chapter.order}", color = Color.Gray, fontSize = 11.sp)
-            }
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun NoteAdminRow(note: Note, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -931,15 +1026,15 @@ fun NoteAdminRow(note: Note, onEdit: () -> Unit, onDelete: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(note.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Type: ${note.type ?: "summary"} | Order: ${note.order}", color = Color.Gray, fontSize = 11.sp)
+                Text(note.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Type: ${note.type ?: "summary"} | Order: ${note.order}", color = Color.Gray, fontSize = 10.sp)
             }
             Row {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -961,15 +1056,15 @@ fun QuestionAdminRow(question: Question, onEdit: () -> Unit, onDelete: () -> Uni
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(question.questionText, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Cat: ${question.category} | Marks: ${question.marks ?: 1}", color = Color.Gray, fontSize = 11.sp)
+                Text(question.questionText, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Cat: ${question.category} | Marks: ${question.marks ?: 1} | Order: ${question.order}", color = Color.Gray, fontSize = 10.sp)
             }
             Row {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red, modifier = Modifier.size(20.dp))
                 }
             }
         }

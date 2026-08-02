@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.towfikedutips.app.data.LocalStorageManager
 import com.towfikedutips.app.model.DownloadedPdf
+import com.towfikedutips.app.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,10 +124,9 @@ fun DownloadsScreen(
                             .fillMaxWidth()
                             .clickable {
                                 try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(pdf.pdfUrl))
-                                    context.startActivity(intent)
+                                    navController.navigate(Screen.PdfViewer.createRoute(pdf.title, pdf.id))
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "Could not open PDF viewer", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Could not open E-Book PDF reader", Toast.LENGTH_SHORT).show()
                                 }
                             },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
