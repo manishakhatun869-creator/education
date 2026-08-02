@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,16 +22,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.firestore.FirebaseFirestore
+import com.towfikedutips.app.model.Banner
 import com.towfikedutips.app.model.Chapter
 import com.towfikedutips.app.model.Note
 import com.towfikedutips.app.model.Question
 import com.towfikedutips.app.model.Subject
+import com.towfikedutips.app.model.AppSettings
 
 enum class AdminTab(val title: String) {
     SUBJECTS("Subjects"),
     CHAPTERS("Chapters"),
     NOTES("Notes"),
-    QUESTIONS("Questions")
+    QUESTIONS("Questions"),
+    BANNERS("Banners"),
+    SETTINGS("Settings")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,13 +44,16 @@ fun AdminDashboardScreen(navController: NavController) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(AdminTab.SUBJECTS) }
 
-    val firestore = remember { FirebaseFirestore.getInstance() }
+    val firestore = remember { com.towfikedutips.app.data.FirestoreProvider.getFirestore(context) }
 
     // Live state lists
     val subjectsList = remember { mutableStateListOf<Subject>() }
     val chaptersList = remember { mutableStateListOf<Chapter>() }
     val notesList = remember { mutableStateListOf<Note>() }
     val questionsList = remember { mutableStateListOf<Question>() }
+    val bannersList = remember { mutableStateListOf<Banner>() }
+    var appSettingsState by remember { mutableStateOf(AppSettings()) }
+    var appSettingsDocId by remember { mutableStateOf<String?>(null) }
 
     var isLoading by remember { mutableStateOf(false) }
 
@@ -61,6 +69,9 @@ fun AdminDashboardScreen(navController: NavController) {
 
     var showAddEditQuestionDialog by remember { mutableStateOf(false) }
     var editingQuestion by remember { mutableStateOf<Question?>(null) }
+
+    var showAddEditBannerDialog by remember { mutableStateOf(false) }
+    var editingBanner by remember { mutableStateOf<Banner?>(null) }
 
     // Functions to fetch records from Firestore
     fun fetchAllData() {
@@ -100,6 +111,24 @@ fun AdminDashboardScreen(navController: NavController) {
                 doc.toObject(Question::class.java)?.copy(id = doc.id)
             }.sortedBy { it.order }
             questionsList.addAll(items)
+        }
+
+        // Fetch Banners
+        firestore.collection("banners").get().addOnSuccessListener { querySnapshot ->
+            bannersList.clear()
+            val items = querySnapshot.documents.mapNotNull { doc ->
+                doc.toObject(Banner::class.java)?.copy(id = doc.id)
+            }.sortedBy { it.order }
+            bannersList.addAll(items)
+        }
+
+        // Fetch Settings
+        firestore.collection("settings").get().addOnSuccessListener { querySnapshot ->
+            if (!querySnapshot.isEmpty) {
+                val doc = querySnapshot.documents[0]
+                appSettingsDocId = doc.id
+                appSettingsState = doc.toObject(AppSettings::class.java) ?: AppSettings()
+            }
             isLoading = false
         }.addOnFailureListener {
             isLoading = false
@@ -129,31 +158,39 @@ fun AdminDashboardScreen(navController: NavController) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    when (selectedTab) {
-                        AdminTab.SUBJECTS -> {
-                            editingSubject = null
-                            showAddEditSubjectDialog = true
+            // Settings doesn't need a float add button as it's a static panel configuration
+            if (selectedTab != AdminTab.SETTINGS) {
+                FloatingActionButton(
+                    onClick = {
+                        when (selectedTab) {
+                            AdminTab.SUBJECTS -> {
+                                editingSubject = null
+                                showAddEditSubjectDialog = true
+                            }
+                            AdminTab.CHAPTERS -> {
+                                editingChapter = null
+                                showAddEditChapterDialog = true
+                            }
+                            AdminTab.NOTES -> {
+                                editingNote = null
+                                showAddEditNoteDialog = true
+                            }
+                            AdminTab.QUESTIONS -> {
+                                editingQuestion = null
+                                showAddEditQuestionDialog = true
+                            }
+                            AdminTab.BANNERS -> {
+                                editingBanner = null
+                                showAddEditBannerDialog = true
+                            }
+                            else -> {}
                         }
-                        AdminTab.CHAPTERS -> {
-                            editingChapter = null
-                            showAddEditChapterDialog = true
-                        }
-                        AdminTab.NOTES -> {
-                            editingNote = null
-                            showAddEditNoteDialog = true
-                        }
-                        AdminTab.QUESTIONS -> {
-                            editingQuestion = null
-                            showAddEditQuestionDialog = true
-                        }
-                    }
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add New Item")
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add New Item")
+                }
             }
         }
     ) { paddingValues ->
@@ -163,12 +200,16 @@ fun AdminDashboardScreen(navController: NavController) {
                 .padding(paddingValues)
         ) {
             // Horizontal Tab Row
-            TabRow(selectedTabIndex = selectedTab.ordinal) {
+            ScrollableTabRow(
+                selectedTabIndex = selectedTab.ordinal,
+                edgePadding = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 AdminTab.values().forEach { tab ->
                     Tab(
                         selected = selectedTab == tab,
                         onClick = { selectedTab = tab },
-                        text = { Text(tab.title, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        text = { Text(tab.title, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                     )
                 }
             }
@@ -265,6 +306,59 @@ fun AdminDashboardScreen(navController: NavController) {
                                                 Toast.makeText(context, "Question deleted", Toast.LENGTH_SHORT).show()
                                                 fetchAllData()
                                             }
+                                    }
+                                )
+                            }
+                        }
+                        AdminTab.BANNERS -> {
+                            if (bannersList.isEmpty()) {
+                                item { Text("No banners found.", color = Color.Gray, fontSize = 12.sp) }
+                            }
+                            items(bannersList) { banner ->
+                                BannerAdminRow(
+                                    banner = banner,
+                                    onEdit = {
+                                        editingBanner = banner
+                                        showAddEditBannerDialog = true
+                                    },
+                                    onDelete = {
+                                        firestore.collection("banners").document(banner.id).delete()
+                                            .addOnSuccessListener {
+                                                Toast.makeText(context, "Banner deleted", Toast.LENGTH_SHORT).show()
+                                                fetchAllData()
+                                            }
+                                    }
+                                )
+                            }
+                        }
+                        AdminTab.SETTINGS -> {
+                            item {
+                                AppSettingsPanel(
+                                    settings = appSettingsState,
+                                    onSave = { updatedSettings ->
+                                        val data = mapOf(
+                                            "appName" to updatedSettings.appName,
+                                            "logoUrl" to updatedSettings.logoUrl,
+                                            "contactEmail" to updatedSettings.contactEmail,
+                                            "contactPhone" to updatedSettings.contactPhone,
+                                            "whatsappNumber" to updatedSettings.whatsappNumber,
+                                            "noticeBanner" to updatedSettings.noticeBanner,
+                                            "theme" to updatedSettings.theme,
+                                            "aboutText" to updatedSettings.aboutText,
+                                            "footerText" to updatedSettings.footerText
+                                        )
+
+                                        val docId = appSettingsDocId
+                                        val task = if (docId != null) {
+                                            firestore.collection("settings").document(docId).set(data)
+                                        } else {
+                                            firestore.collection("settings").add(data)
+                                        }
+
+                                        task.addOnSuccessListener {
+                                            Toast.makeText(context, "App settings updated successfully", Toast.LENGTH_SHORT).show()
+                                            fetchAllData()
+                                        }
                                     }
                                 )
                             }
@@ -559,6 +653,150 @@ fun AdminDashboardScreen(navController: NavController) {
                     TextButton(onClick = { showAddEditQuestionDialog = false }) { Text("Cancel") }
                 }
             )
+        }
+
+        // ===================================
+        // ADD / EDIT BANNERS DIALOG
+        // ===================================
+        if (showAddEditBannerDialog) {
+            var title by remember { mutableStateOf(editingBanner?.title ?: "") }
+            var imageUrl by remember { mutableStateOf(editingBanner?.imageUrl ?: "") }
+            var targetUrl by remember { mutableStateOf(editingBanner?.targetUrl ?: "") }
+            var isVisible by remember { mutableStateOf(editingBanner?.isVisible ?: true) }
+            var order by remember { mutableStateOf(editingBanner?.order?.toString() ?: "0") }
+
+            AlertDialog(
+                onDismissRequest = { showAddEditBannerDialog = false },
+                title = { Text(if (editingBanner == null) "Add Banner" else "Edit Banner") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Banner Title") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("Image URL") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = targetUrl, onValueChange = { targetUrl = it }, label = { Text("Target Screen Route") }, modifier = Modifier.fillMaxWidth())
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = isVisible, onCheckedChange = { isVisible = it })
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Visible in App", fontSize = 12.sp)
+                        }
+                        OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Order") }, modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val o = order.toIntOrNull() ?: 0
+                        val data = mapOf(
+                            "title" to title,
+                            "imageUrl" to imageUrl,
+                            "targetUrl" to targetUrl,
+                            "isVisible" to isVisible,
+                            "order" to o,
+                            "createdAt" to (editingBanner?.createdAt ?: java.util.Date().toString())
+                        )
+                        val task = if (editingBanner == null) {
+                            firestore.collection("banners").add(data)
+                        } else {
+                            firestore.collection("banners").document(editingBanner!!.id).set(data)
+                        }
+                        task.addOnSuccessListener {
+                            Toast.makeText(context, "Banner saved", Toast.LENGTH_SHORT).show()
+                            showAddEditBannerDialog = false
+                            fetchAllData()
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddEditBannerDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun BannerAdminRow(banner: Banner, onEdit: () -> Unit, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(banner.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Visible: ${banner.isVisible} | Order: ${banner.order}", color = Color.Gray, fontSize = 11.sp)
+            }
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppSettingsPanel(settings: AppSettings, onSave: (AppSettings) -> Unit) {
+    var appName by remember { mutableStateOf(settings.appName) }
+    var logoUrl by remember { mutableStateOf(settings.logoUrl) }
+    var contactEmail by remember { mutableStateOf(settings.contactEmail) }
+    var contactPhone by remember { mutableStateOf(settings.contactPhone) }
+    var whatsappNumber by remember { mutableStateOf(settings.whatsappNumber) }
+    var noticeBanner by remember { mutableStateOf(settings.noticeBanner) }
+    var theme by remember { mutableStateOf(settings.theme) }
+    var aboutText by remember { mutableStateOf(settings.aboutText) }
+    var footerText by remember { mutableStateOf(settings.footerText) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("General App Settings", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+
+            OutlinedTextField(value = appName, onValueChange = { appName = it }, label = { Text("App Name") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = logoUrl, onValueChange = { logoUrl = it }, label = { Text("Logo URL") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = noticeBanner, onValueChange = { noticeBanner = it }, label = { Text("Notice Banner Bar") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = contactEmail, onValueChange = { contactEmail = it }, label = { Text("Contact Email") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = contactPhone, onValueChange = { contactPhone = it }, label = { Text("Contact Phone") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = whatsappNumber, onValueChange = { whatsappNumber = it }, label = { Text("WhatsApp Number") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = aboutText, onValueChange = { aboutText = it }, label = { Text("About Description") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            OutlinedTextField(value = footerText, onValueChange = { footerText = it }, label = { Text("Footer Text") }, modifier = Modifier.fillMaxWidth())
+
+            Button(
+                onClick = {
+                    onSave(
+                        AppSettings(
+                            appName = appName,
+                            logoUrl = logoUrl,
+                            contactEmail = contactEmail,
+                            contactPhone = contactPhone,
+                            whatsappNumber = whatsappNumber,
+                            noticeBanner = noticeBanner,
+                            theme = theme,
+                            aboutText = aboutText,
+                            footerText = footerText
+                        )
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Save Settings Changes", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

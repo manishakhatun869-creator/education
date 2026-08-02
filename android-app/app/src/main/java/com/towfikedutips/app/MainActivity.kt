@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.firestore.FirebaseFirestore
 import com.towfikedutips.app.data.LocalStorageManager
 import com.towfikedutips.app.data.SeedData
@@ -54,6 +55,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Request push notification permission for Android 13+ (API 33+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                androidx.core.app.ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    101
+                )
+            }
+        }
+
         val localStorageManager = LocalStorageManager(applicationContext)
 
         setContent {
@@ -73,6 +89,7 @@ sealed class BottomNavItem(val route: String, val title: String, val icon: Image
 
 @Composable
 fun MainAppLayout(localStorageManager: LocalStorageManager) {
+    val context = LocalContext.current
     val navController = rememberNavController()
 
     val subjectsList = remember { mutableStateListOf<Subject>() }
@@ -92,7 +109,7 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
 
         // Fetch asynchronously from Firebase Firestore
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            val firestore = com.towfikedutips.app.data.FirestoreProvider.getFirestore(context)
 
             // Fetch Subjects
             firestore.collection("subjects").get().addOnSuccessListener { querySnapshot ->
