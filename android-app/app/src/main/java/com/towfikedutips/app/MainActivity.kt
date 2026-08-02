@@ -46,6 +46,8 @@ import com.towfikedutips.app.ui.screen.HomeScreen
 import com.towfikedutips.app.ui.screen.SavedScreen
 import com.towfikedutips.app.ui.screen.SubjectsScreen
 import com.towfikedutips.app.ui.screen.SuggestionsScreen
+import com.towfikedutips.app.ui.screen.AdminLoginScreen
+import com.towfikedutips.app.ui.screen.AdminDashboardScreen
 import com.towfikedutips.app.ui.theme.TowfikEdutipsTheme
 
 class MainActivity : ComponentActivity() {
@@ -265,6 +267,14 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
 
             composable(Screen.Chat.route) {
                 AiChatScreen(navController = navController)
+            }
+
+            composable(Screen.AdminLogin.route) {
+                AdminLoginScreen(navController = navController)
+            }
+
+            composable(Screen.AdminDashboard.route) {
+                AdminDashboardScreen(navController = navController)
             }
         }
     }
