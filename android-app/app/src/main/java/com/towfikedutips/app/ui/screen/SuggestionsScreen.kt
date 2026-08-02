@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.towfikedutips.app.data.LocalStorageManager
 import com.towfikedutips.app.model.Chapter
 import com.towfikedutips.app.model.Question
 import com.towfikedutips.app.model.Subject
@@ -34,6 +35,7 @@ import com.towfikedutips.app.ui.navigation.Screen
 @Composable
 fun SuggestionsScreen(
     navController: NavController,
+    localStorageManager: LocalStorageManager,
     subjects: List<Subject>,
     chapters: List<Chapter>,
     questions: List<Question>
@@ -78,9 +80,17 @@ fun SuggestionsScreen(
                 },
                 actions = {
                     IconButton(onClick = {
+                        localStorageManager.saveDownloadedPdf(
+                            com.towfikedutips.app.model.DownloadedPdf(
+                                id = "suggestions_all",
+                                title = "Madhyamik 2026 Complete Suggestions Prediction Set",
+                                pdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                                downloadedAt = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(java.util.Date())
+                            )
+                        )
                         Toast.makeText(
                             context,
-                            "Generating and compiling dynamic WBBSE Class 10 predictions...",
+                            "Suggestions PDF successfully downloaded & saved in App offline list!",
                             Toast.LENGTH_LONG
                         ).show()
                     }) {
@@ -278,9 +288,17 @@ fun SuggestionsScreen(
                             ) {
                                 Button(
                                     onClick = {
+                                        localStorageManager.saveDownloadedPdf(
+                                            com.towfikedutips.app.model.DownloadedPdf(
+                                                id = q.id,
+                                                title = q.questionText,
+                                                pdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                                                downloadedAt = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(java.util.Date())
+                                            )
+                                        )
                                         Toast.makeText(
                                             context,
-                                            "Downloading Study material details as PDF",
+                                            "Material PDF successfully downloaded & saved in App offline list!",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     },

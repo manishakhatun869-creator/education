@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +48,7 @@ import com.towfikedutips.app.ui.screen.HomeScreen
 import com.towfikedutips.app.ui.screen.SavedScreen
 import com.towfikedutips.app.ui.screen.SubjectsScreen
 import com.towfikedutips.app.ui.screen.SuggestionsScreen
+import com.towfikedutips.app.ui.screen.DownloadsScreen
 import com.towfikedutips.app.ui.screen.AdminLoginScreen
 import com.towfikedutips.app.ui.screen.AdminDashboardScreen
 import com.towfikedutips.app.ui.theme.TowfikEdutipsTheme
@@ -84,6 +86,7 @@ sealed class BottomNavItem(val route: String, val title: String, val icon: Image
     object Home : BottomNavItem(Screen.Home.route, "Home", Icons.Default.Home)
     object Subjects : BottomNavItem(Screen.Subjects.route, "Subjects", Icons.Default.Book)
     object Suggestions : BottomNavItem(Screen.Suggestions.route, "Suggestions", Icons.Default.Star)
+    object Downloads : BottomNavItem(Screen.Downloads.route, "Downloads", Icons.Default.Download)
     object Saved : BottomNavItem(Screen.Saved.route, "Saved", Icons.Default.Favorite)
 }
 
@@ -180,6 +183,7 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
                 BottomNavItem.Home,
                 BottomNavItem.Subjects,
                 BottomNavItem.Suggestions,
+                BottomNavItem.Downloads,
                 BottomNavItem.Saved
             )
 
@@ -249,6 +253,7 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
             composable(Screen.Suggestions.route) {
                 SuggestionsScreen(
                     navController = navController,
+                    localStorageManager = localStorageManager,
                     subjects = subjectsList,
                     chapters = chaptersList,
                     questions = questionsList
@@ -257,6 +262,13 @@ fun MainAppLayout(localStorageManager: LocalStorageManager) {
 
             composable(Screen.Saved.route) {
                 SavedScreen(
+                    navController = navController,
+                    localStorageManager = localStorageManager
+                )
+            }
+
+            composable(Screen.Downloads.route) {
+                DownloadsScreen(
                     navController = navController,
                     localStorageManager = localStorageManager
                 )

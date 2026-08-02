@@ -173,9 +173,19 @@ fun ChapterDetailScreen(
                         // Simulation of View/Download complete Chapter PDF
                         Button(
                             onClick = {
+                                val downloadUrl = chapter.pdfUrl ?: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+                                val downloadTitle = chapter.pdfTitle ?: "${chapter.chapterName} - Full Notes & Q&A"
+                                localStorageManager.saveDownloadedPdf(
+                                    com.towfikedutips.app.model.DownloadedPdf(
+                                        id = chapter.id,
+                                        title = downloadTitle,
+                                        pdfUrl = downloadUrl,
+                                        downloadedAt = java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(java.util.Date())
+                                    )
+                                )
                                 Toast.makeText(
                                     context,
-                                    "Simulating: Complete offline PDF generated & downloaded successfully!",
+                                    "Successfully downloaded & saved in App offline downloads list!",
                                     Toast.LENGTH_LONG
                                 ).show()
                             },

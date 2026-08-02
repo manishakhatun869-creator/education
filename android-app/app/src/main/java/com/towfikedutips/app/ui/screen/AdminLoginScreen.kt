@@ -122,26 +122,6 @@ fun AdminLoginScreen(navController: NavController) {
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "💡 Default Credentials:",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Username: admin\nPassword: towfik2026",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
                 Button(
                     onClick = {
                         if (username.isBlank() || password.isBlank()) {
@@ -151,27 +131,14 @@ fun AdminLoginScreen(navController: NavController) {
                         isLoading = true
                         errorMessage = null
 
-                        // Check Firestore first
+                        // Check Firestore securely by querying matching document only
                         val firestore = com.towfikedutips.app.data.FirestoreProvider.getFirestore(context)
-                        firestore.collection("admin").get()
+                        firestore.collection("admin")
+                            .whereEqualTo("username", username.trim())
+                            .whereEqualTo("password", password.trim())
+                            .get()
                             .addOnSuccessListener { querySnapshot ->
-                                var matched = false
-                                if (!querySnapshot.isEmpty) {
-                                    for (doc in querySnapshot.documents) {
-                                        val u = doc.getString("username")
-                                        val p = doc.getString("password")
-                                        if (u != null && p != null && u.trim() == username.trim() && p.trim() == password.trim()) {
-                                            matched = true
-                                            break
-                                        }
-                                    }
-                                }
-
-                                // If not matched in firestore records, fallback to default credentials
-                                if (!matched && username.trim() == "admin" && password.trim() == "towfik2026") {
-                                    matched = true
-                                }
-
+                                val matched = !querySnapshot.isEmpty
                                 isLoading = false
                                 if (matched) {
                                     navController.navigate(Screen.AdminDashboard.route) {
@@ -182,15 +149,8 @@ fun AdminLoginScreen(navController: NavController) {
                                 }
                             }
                             .addOnFailureListener {
-                                // Offline or error fallback
                                 isLoading = false
-                                if (username.trim() == "admin" && password.trim() == "towfik2026") {
-                                    navController.navigate(Screen.AdminDashboard.route) {
-                                        popUpTo(Screen.Home.route)
-                                    }
-                                } else {
-                                    errorMessage = "Connection error. Failed to check admin credentials."
-                                }
+                                errorMessage = "Connection error. Failed to verify admin credentials."
                             }
                     },
                     modifier = Modifier

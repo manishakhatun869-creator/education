@@ -535,7 +535,34 @@ fun AdminDashboardScreen(navController: NavController) {
                         }
                         item { OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Note Title") }, modifier = Modifier.fillMaxWidth()) }
                         item { OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Content Body") }, modifier = Modifier.fillMaxWidth().height(100.dp)) }
-                        item { OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (summary/formula)") }, modifier = Modifier.fillMaxWidth()) }
+                        item {
+                            Text("Note Type:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            val noteTypes = listOf("summary", "formula", "important", "revision")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                noteTypes.forEach { t ->
+                                    val isSelected = type == t
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable { type = t }
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = t.uppercase(),
+                                            color = if (isSelected) Color.White else Color.DarkGray,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         item { OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Order") }, modifier = Modifier.fillMaxWidth()) }
                     }
                 },
@@ -611,7 +638,35 @@ fun AdminDashboardScreen(navController: NavController) {
                         }
                         item { OutlinedTextField(value = questionText, onValueChange = { questionText = it }, label = { Text("Question Text") }, modifier = Modifier.fillMaxWidth()) }
                         item { OutlinedTextField(value = answerText, onValueChange = { answerText = it }, label = { Text("Answer Text") }, modifier = Modifier.fillMaxWidth()) }
-                        item { OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category (mcq/short/long/madhyamik_suggestion)") }, modifier = Modifier.fillMaxWidth()) }
+                        item {
+                            Text("Question Category:", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            val categories = listOf("mcq", "short", "long", "madhyamik_suggestion", "pyq", "important")
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                contentPadding = PaddingValues(vertical = 4.dp)
+                            ) {
+                                items(categories) { cat ->
+                                    val isSelected = category == cat
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable { category = cat }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = cat.uppercase().replace("_", " "),
+                                            color = if (isSelected) Color.White else Color.DarkGray,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         item { OutlinedTextField(value = marks, onValueChange = { marks = it }, label = { Text("Marks") }, modifier = Modifier.fillMaxWidth()) }
                         item { OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Order") }, modifier = Modifier.fillMaxWidth()) }
                     }
