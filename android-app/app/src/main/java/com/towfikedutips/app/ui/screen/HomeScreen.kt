@@ -56,12 +56,12 @@ fun HomeScreen(
                             text = "Towfik Edutips",
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Color.White
                         )
                         Text(
                             text = "Class 10 Madhyamik Study Partner",
                             fontSize = 11.sp,
-                            color = Color.Gray
+                            color = Color.White.copy(alpha = 0.8f)
                         )
                     }
                 },
@@ -70,19 +70,19 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.Face,
                             contentDescription = "AI Assistant",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = Color.White
                         )
                     }
                     IconButton(onClick = { navController.navigate(Screen.AdminLogin.route) }) {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = "Admin Login",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = Color.White
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
@@ -144,7 +144,11 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFF047857))
+                                .background(
+                                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                        colors = listOf(Color(0xFF7F3DFF), Color(0xFF6B4EFF))
+                                    )
+                                )
                         ) {
                             Column(
                                 modifier = Modifier
@@ -152,24 +156,38 @@ fun HomeScreen(
                                     .padding(16.dp),
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Text(
-                                    text = "UPCOMING EXAMS",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color(0xFFFEF3C7)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFEF3C7),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "UPCOMING EXAMS & REVISION SERIES",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFFFEF3C7),
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = currentBanner.title,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Tap to view handpicked suggestions.",
+                                    text = "Tap to view handpicked syllabus suggestions and mock keys.",
                                     fontSize = 11.sp,
-                                    color = Color(0xFFECFDF5)
+                                    color = Color(0xFFE2D6FF)
                                 )
                             }
                         }

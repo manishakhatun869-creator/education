@@ -8,20 +8,18 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val Slate900 = Color(0xFF0F172A)
-val Slate800 = Color(0xFF1E293B)
-val Slate50 = Color(0xFFF8FAFC)
-val Emerald600 = Color(0xFF059669)
-val Emerald700 = Color(0xFF047857)
-val Emerald50 = Color(0xFFECFDF5)
-val Amber500 = Color(0xFFF59E0B)
-val Amber50 = Color(0xFFFEF3C7)
+val PurplePrimary = Color(0xFF6B4EFF)
+val PurpleSecondary = Color(0xFFD6C7FF)
+val BackgroundWhite = Color(0xFFFFFFFF)
+val SurfaceWhite = Color(0xFFFFFFFF)
+val TextDark = Color(0xFF0F172A)
+val TextLight = Color(0xFFE2E8F0)
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Emerald600,
-    secondary = Amber500,
-    background = Slate900,
-    surface = Slate800,
+    primary = PurplePrimary,
+    secondary = PurpleSecondary,
+    background = Color(0xFF0F172A), // Keep slate dark background for dark mode to be professional
+    surface = Color(0xFF1E293B),
     onPrimary = Color.White,
     onSecondary = Color.Black,
     onBackground = Color.White,
@@ -29,14 +27,14 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Emerald600,
-    secondary = Amber500,
-    background = Slate50,
-    surface = Color.White,
+    primary = PurplePrimary,
+    secondary = PurpleSecondary,
+    background = BackgroundWhite,
+    surface = SurfaceWhite,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = Slate900,
-    onSurface = Slate900
+    onBackground = TextDark,
+    onSurface = TextDark
 )
 
 @Composable

@@ -12,4 +12,7 @@ sealed class Screen(val route: String) {
     object AdminLogin : Screen("admin_login")
     object AdminDashboard : Screen("admin_dashboard")
     object Downloads : Screen("downloads")
+    object PdfViewer : Screen("pdf_viewer/{title}/{chapterId}") {
+        fun createRoute(title: String, chapterId: String) = "pdf_viewer/${android.net.Uri.encode(title)}/$chapterId"
+    }
 }
