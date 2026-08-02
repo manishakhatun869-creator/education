@@ -83,3 +83,11 @@ data class AppSettings(
     val aboutText: String = "",
     val footerText: String = ""
 )
+
+data class DownloadedPdf(
+    val id: String = "",
+    val title: String = "",
+    val pdfUrl: String = "",
+    val downloadedAt: String = "",
+    val size: String = "2.4 MB"
+)

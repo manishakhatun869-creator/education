@@ -3,6 +3,7 @@ package com.towfikedutips.app.data
 import android.content.Context
 import android.content.SharedPreferences
 import com.towfikedutips.app.model.SavedItem
+import com.towfikedutips.app.model.DownloadedPdf
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -81,5 +82,55 @@ class LocalStorageManager(context: Context) {
 
     fun setDarkMode(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply()
+    }
+
+    fun getDownloadedPdfs(): List<DownloadedPdf> {
+        val jsonString = prefs.getString("towfik_downloaded_pdfs", null) ?: return emptyList()
+        val list = mutableListOf<DownloadedPdf>()
+        try {
+            val arr = JSONArray(jsonString)
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(
+                    DownloadedPdf(
+                        id = obj.optString("id"),
+                        title = obj.optString("title"),
+                        pdfUrl = obj.optString("pdfUrl"),
+                        downloadedAt = obj.optString("downloadedAt"),
+                        size = obj.optString("size")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list
+    }
+
+    fun saveDownloadedPdf(pdf: DownloadedPdf) {
+        val current = getDownloadedPdfs().toMutableList()
+        current.removeAll { it.pdfUrl == pdf.pdfUrl }
+        current.add(0, pdf)
+        saveDownloadedList(current)
+    }
+
+    fun removeDownloadedPdf(pdfUrl: String) {
+        val current = getDownloadedPdfs().toMutableList()
+        current.removeAll { it.pdfUrl == pdfUrl }
+        saveDownloadedList(current)
+    }
+
+    private fun saveDownloadedList(list: List<DownloadedPdf>) {
+        val arr = JSONArray()
+        list.forEach { item ->
+            val obj = JSONObject()
+            obj.put("id", item.id)
+            obj.put("title", item.title)
+            obj.put("pdfUrl", item.pdfUrl)
+            obj.put("downloadedAt", item.downloadedAt)
+            obj.put("size", item.size)
+            arr.put(obj)
+        }
+        prefs.edit().putString("towfik_downloaded_pdfs", arr.toString()).apply()
     }
 }
