@@ -17,11 +17,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.ui.platform.LocalContext
 import com.towfikedutips.app.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminLoginScreen(navController: NavController) {
+    val context = LocalContext.current
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -150,7 +152,7 @@ fun AdminLoginScreen(navController: NavController) {
                         errorMessage = null
 
                         // Check Firestore first
-                        val firestore = FirebaseFirestore.getInstance()
+                        val firestore = com.towfikedutips.app.data.FirestoreProvider.getFirestore(context)
                         firestore.collection("admin").get()
                             .addOnSuccessListener { querySnapshot ->
                                 var matched = false
