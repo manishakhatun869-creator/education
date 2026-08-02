@@ -152,7 +152,7 @@ fun PdfViewerScreen(
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Divider(color = Color.LightGray.copy(alpha = 0.5f))
+                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "This document compiles all registered study notes, multiple-choice questions, short answers, and long answers sequentially for offline study.",

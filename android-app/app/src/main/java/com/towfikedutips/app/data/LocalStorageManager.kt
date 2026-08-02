@@ -109,14 +109,14 @@ class LocalStorageManager(context: Context) {
 
     fun saveDownloadedPdf(pdf: DownloadedPdf) {
         val current = getDownloadedPdfs().toMutableList()
-        current.removeAll { it.pdfUrl == pdf.pdfUrl }
+        current.removeAll { it.id == pdf.id }
         current.add(0, pdf)
         saveDownloadedList(current)
     }
 
-    fun removeDownloadedPdf(pdfUrl: String) {
+    fun removeDownloadedPdf(pdfId: String) {
         val current = getDownloadedPdfs().toMutableList()
-        current.removeAll { it.pdfUrl == pdfUrl }
+        current.removeAll { it.id == pdfId }
         saveDownloadedList(current)
     }
 

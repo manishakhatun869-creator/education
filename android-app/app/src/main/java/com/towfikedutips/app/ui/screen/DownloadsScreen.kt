@@ -178,7 +178,7 @@ fun DownloadsScreen(
 
                             IconButton(
                                 onClick = {
-                                    localStorageManager.removeDownloadedPdf(pdf.pdfUrl)
+                                    localStorageManager.removeDownloadedPdf(pdf.id)
                                     reloadList()
                                     Toast.makeText(context, "Removed from download list", Toast.LENGTH_SHORT).show()
                                 }
