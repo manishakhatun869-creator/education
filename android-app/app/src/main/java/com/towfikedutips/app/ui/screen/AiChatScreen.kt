@@ -1,6 +1,7 @@
 package com.towfikedutips.app.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,8 +23,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 
 data class ChatMessage(
     val text: String,
@@ -31,12 +38,74 @@ data class ChatMessage(
     val timestamp: String = "Now"
 )
 
+// Serverless helper function to call official Gemini API directly from student client
+suspend fun callGeminiApi(prompt: String): String = withContext(Dispatchers.IO) {
+    var connection: HttpURLConnection? = null
+    try {
+        val apiKey = "AIzaSyAsURYh7jU--SbNgRatHOK-xngKwnTo_qw"
+        val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey")
+        connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.doOutput = true
+
+        val requestBody = JSONObject()
+        val contentsArray = JSONArray()
+        val contentObject = JSONObject()
+        val partsArray = JSONArray()
+        val partObject = JSONObject()
+
+        partObject.put("text", prompt)
+        partsArray.put(partObject)
+        contentObject.put("parts", partsArray)
+        contentsArray.put(contentObject)
+        requestBody.put("contents", contentsArray)
+
+        // Add WBBSE Madhyamik Board specific system instructions
+        val systemInstruction = JSONObject()
+        val sysPartsArray = JSONArray()
+        val sysPartObject = JSONObject()
+        sysPartObject.put("text", "You are 'Towfik Edutips AI Tutor', an expert WBBSE Madhyamik (Class 10) exam preparation assistant created for Towfik Edutips students. You specialize in Bengali, English, History, Geography, Physical Science, Life Science, and Mathematics for WBBSE board students. Always provide clear, accurate, encouraging, and detailed answers with marks distribution guidance when requested. Format with bold headings, bullet points, and clear Bengali or English explanations.")
+        sysPartsArray.put(sysPartObject)
+        systemInstruction.put("parts", sysPartsArray)
+        requestBody.put("systemInstruction", systemInstruction)
+
+        val writer = OutputStreamWriter(connection.outputStream)
+        writer.write(requestBody.toString())
+        writer.flush()
+        writer.close()
+
+        val responseCode = connection.responseCode
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            val responseString = connection.inputStream.bufferedReader().use { it.readText() }
+            val jsonResponse = JSONObject(responseString)
+            val candidates = jsonResponse.getJSONArray("candidates")
+            if (candidates.length() > 0) {
+                val firstCandidate = candidates.getJSONObject(0)
+                val content = firstCandidate.getJSONObject("content")
+                val parts = content.getJSONArray("parts")
+                if (parts.length() > 0) {
+                    return@withContext parts.getJSONObject(0).getString("text")
+                }
+            }
+        }
+        return@withContext "Sorry, I am having a temporary connection issue. Please check your internet connection or try again."
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return@withContext "Apologies! As your WBBSE Madhyamik tutor, I am temporarily having trouble reaching the knowledgebase. Please try again soon."
+    } finally {
+        connection?.disconnect()
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiChatScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     var inputQuery by remember { mutableStateOf("") }
+    var isThinking by remember { mutableStateOf(false) }
+
     val messages = remember {
         mutableStateListOf(
             ChatMessage(
@@ -54,31 +123,22 @@ fun AiChatScreen(navController: NavController) {
     )
 
     fun onSendMessage(queryText: String) {
-        if (queryText.isBlank()) return
+        if (queryText.isBlank() || isThinking) return
         messages.add(ChatMessage(queryText, isUser = true))
         inputQuery = ""
+        isThinking = true
 
         coroutineScope.launch {
-            delay(1000)
-            val replyText = when {
-                queryText.contains("History", ignoreCase = true) -> {
-                    "**🏆 Madhyamik History 2026 High-Yield Questions:**\n\n1. **ভারতের মহাবিদ্রোহ (১৮৫৭):** মহাবিদ্রোহের প্রকৃতি ও চরিত্র আলোচনা করো। (৮ নম্বর)\n2. **শিক্ষা সংস্কার:** উনিশ শতকে বাংলায় নারী শিক্ষা বিস্তারে ঈশ্বরচন্দ্র বিদ্যাসাগরের অবদান লেখো। (৮ নম্বর)\n3. **মহাবিদ্রোহে হিন্দু-মুসলিম ঐক্য:** বিদ্রোহে দুই সম্প্রদায়ের মেলবন্ধনের গুরুত্ব।"
-                }
-                queryText.contains("Physical Science", ignoreCase = true) -> {
-                    "**⚗️ Physical Science Important Formulas & Key Tips:**\n\n- **বয়েলের সূত্র (Boyle's Law):** ${'$'}P_1V_1 = P_2V_2${'$'} (স্থির তাপমাত্রায় নির্দিষ্ট ভরের গ্যাসের ক্ষেত্রে)\n- **চার্লসের সূত্র (Charles's Law):** ${'$'}V/T = \\text{constant}${'$'} or ${'$'}V_1/T_1 = V_2/T_2${'$'}\n- **আদর্শ গ্যাস সমীকরণ:** ${'$'}PV = nRT${'$'}"
-                }
-                queryText.contains("Life Science", ignoreCase = true) -> {
-                    "**🌿 Life Science Diagram-Based Questions:**\n\n1. একটি আদর্শ নিউরনের (Neuron) পরিচ্ছন্ন চিত্র অঙ্কন করে নিম্নলিখিত অংশগুলি চিহ্নিত করো: অ্যাক্সন, ডেনড্রন, মায়েলিন সিথ, র্যানভিয়ারের পর্ব।\n2. সপুষ্পক উদ্ভিদের দ্বিনিষেক প্রক্রিয়ার চিত্র অঙ্কন।"
-                }
-                queryText.contains("Mathematics", ignoreCase = true) -> {
-                    "**📐 Mathematics Important Geometry Theorems (Class 10 WBBSE):**\n\n1. **উপপাদ্য ৩৮:** বৃত্তস্থ চতুর্ভুজের বিপরীত কোণগুলি পরস্পর সম্পূরক।\n2. **উপপাদ্য ৪১:** বৃত্তের বহিঃস্থ কোনো বিন্দু থেকে যে দুটি স্পর্শক অঙ্কন করা যায়, তাদের দৈর্ঘ্য সমান।"
-                }
-                else -> {
-                    "নমস্কার! I have received your question regarding \"$queryText\". As your expert Class 10 Madhyamik study tutor, I suggest focusing on WBBSE past ten years' solved board questions and textbook chapter summaries. Keep preparing hard!"
-                }
-            }
+            // Scroll to the user message
+            listState.animateScrollToItem(messages.size - 1)
+
+            // Securely call official Gemini API directly from the client
+            val replyText = callGeminiApi(queryText)
+
             messages.add(ChatMessage(replyText, isUser = false))
-            delay(100)
+            isThinking = false
+
+            // Scroll to the bot's response
             listState.animateScrollToItem(messages.size - 1)
         }
     }
@@ -91,30 +151,31 @@ fun AiChatScreen(navController: NavController) {
                         Icon(
                             imageVector = Icons.Default.Face,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = Color.White
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
                                 text = "Towfik AI Tutor",
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 16.sp
+                                fontSize = 16.sp,
+                                color = Color.White
                             )
                             Text(
                                 text = "Class 10 Smart Assistant",
                                 fontSize = 10.sp,
-                                color = Color.Gray
+                                color = Color.White.copy(alpha = 0.8f)
                             )
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
@@ -122,13 +183,14 @@ fun AiChatScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White) // crisp white background
                 .padding(paddingValues)
         ) {
             // Preset Suggestion Chips Row
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(Color.White)
                     .padding(vertical = 8.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -156,14 +218,15 @@ fun AiChatScreen(navController: NavController) {
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(Color(0xFFF8FAFC)) // Textbook off-white tint
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(messages) { msg ->
                     val alignment = if (msg.isUser) Alignment.End else Alignment.Start
-                    val containerColor = if (msg.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                    val contentColor = if (msg.isUser) Color.White else MaterialTheme.colorScheme.onSurface
+                    val containerColor = if (msg.isUser) MaterialTheme.colorScheme.primary else Color.White
+                    val contentColor = if (msg.isUser) Color.White else Color.Black
+                    val bubbleBorderModifier = if (msg.isUser) Modifier else Modifier.border(0.5.dp, Color.LightGray, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomEnd = 12.dp))
 
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -181,6 +244,7 @@ fun AiChatScreen(navController: NavController) {
                                     )
                                 )
                                 .background(containerColor)
+                                .then(bubbleBorderModifier)
                                 .padding(12.dp)
                         ) {
                             Text(
@@ -192,13 +256,36 @@ fun AiChatScreen(navController: NavController) {
                         }
                     }
                 }
+
+                if (isThinking) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Towfik AI is typing...",
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
 
             // Chat input bar
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -225,7 +312,8 @@ fun AiChatScreen(navController: NavController) {
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = Color.White
                         ),
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(44.dp),
+                        enabled = inputQuery.isNotBlank() && !isThinking
                     ) {
                         Icon(Icons.Default.Send, contentDescription = "Send", modifier = Modifier.size(18.dp))
                     }
