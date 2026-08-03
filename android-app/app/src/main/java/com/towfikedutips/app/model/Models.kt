@@ -81,7 +81,8 @@ data class AppSettings(
     val noticeBanner: String = "",
     val theme: String = "light",
     val aboutText: String = "",
-    val footerText: String = ""
+    val footerText: String = "",
+    val backendUrl: String = "http://10.0.2.2:3000"
 )
 
 data class DownloadedPdf(

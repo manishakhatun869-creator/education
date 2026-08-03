@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,37 +39,20 @@ data class ChatMessage(
     val timestamp: String = "Now"
 )
 
-// Serverless helper function to call official Gemini API directly from student client
-suspend fun callGeminiApi(prompt: String): String = withContext(Dispatchers.IO) {
+// Call official Gemini API securely through the server-side /api/chat proxy to keep API Key secure and prevent PERMISSION_DENIED blocks
+suspend fun callGeminiApi(prompt: String, baseUrl: String): String = withContext(Dispatchers.IO) {
     var connection: HttpURLConnection? = null
     try {
-        val apiKey = "AIzaSyAsURYh7jU--SbNgRatHOK-xngKwnTo_qw"
-        val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey")
+        val cleanUrl = baseUrl.removeSuffix("/")
+        val url = URL("$cleanUrl/api/chat")
         connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "application/json")
         connection.doOutput = true
 
         val requestBody = JSONObject()
-        val contentsArray = JSONArray()
-        val contentObject = JSONObject()
-        val partsArray = JSONArray()
-        val partObject = JSONObject()
-
-        partObject.put("text", prompt)
-        partsArray.put(partObject)
-        contentObject.put("parts", partsArray)
-        contentsArray.put(contentObject)
-        requestBody.put("contents", contentsArray)
-
-        // Add WBBSE Madhyamik Board specific system instructions
-        val systemInstruction = JSONObject()
-        val sysPartsArray = JSONArray()
-        val sysPartObject = JSONObject()
-        sysPartObject.put("text", "You are 'Towfik Edutips AI Tutor', an expert WBBSE Madhyamik (Class 10) exam preparation assistant created for Towfik Edutips students. You specialize in Bengali, English, History, Geography, Physical Science, Life Science, and Mathematics for WBBSE board students. Always provide clear, accurate, encouraging, and detailed answers with marks distribution guidance when requested. Format with bold headings, bullet points, and clear Bengali or English explanations.")
-        sysPartsArray.put(sysPartObject)
-        systemInstruction.put("parts", sysPartsArray)
-        requestBody.put("systemInstruction", systemInstruction)
+        requestBody.put("message", prompt)
+        requestBody.put("history", JSONArray())
 
         val writer = OutputStreamWriter(connection.outputStream)
         writer.write(requestBody.toString())
@@ -79,17 +63,15 @@ suspend fun callGeminiApi(prompt: String): String = withContext(Dispatchers.IO) 
         if (responseCode == HttpURLConnection.HTTP_OK) {
             val responseString = connection.inputStream.bufferedReader().use { it.readText() }
             val jsonResponse = JSONObject(responseString)
-            val candidates = jsonResponse.getJSONArray("candidates")
-            if (candidates.length() > 0) {
-                val firstCandidate = candidates.getJSONObject(0)
-                val content = firstCandidate.getJSONObject("content")
-                val parts = content.getJSONArray("parts")
-                if (parts.length() > 0) {
-                    return@withContext parts.getJSONObject(0).getString("text")
-                }
+            return@withContext jsonResponse.optString("reply", "Sorry, I could not generate a response. Please try again.")
+        } else {
+            val errorResponse = connection.errorStream?.bufferedReader()?.use { it.readText() }
+            if (!errorResponse.isNullOrBlank()) {
+                val errJson = JSONObject(errorResponse)
+                return@withContext errJson.optString("error", "Error Code $responseCode from AI Tutor backend.")
             }
         }
-        return@withContext "Sorry, I am having a temporary connection issue. Please check your internet connection or try again."
+        return@withContext "Sorry, I am facing a connection issue with port 3000. Please make sure the local dev server is running or configure the server URL."
     } catch (e: Exception) {
         e.printStackTrace()
         return@withContext "Apologies! As your WBBSE Madhyamik tutor, I am temporarily having trouble reaching the knowledgebase. Please try again soon."
@@ -101,10 +83,23 @@ suspend fun callGeminiApi(prompt: String): String = withContext(Dispatchers.IO) 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiChatScreen(navController: NavController) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     var inputQuery by remember { mutableStateOf("") }
     var isThinking by remember { mutableStateOf(false) }
+
+    val firestore = remember { com.towfikedutips.app.data.FirestoreProvider.getFirestore(context) }
+    var backendApiUrl by remember { mutableStateOf("http://10.0.2.2:3000") }
+
+    LaunchedEffect(Unit) {
+        firestore.collection("settings").get().addOnSuccessListener { querySnapshot ->
+            if (!querySnapshot.isEmpty) {
+                val doc = querySnapshot.documents[0]
+                backendApiUrl = doc.getString("backendUrl") ?: "http://10.0.2.2:3000"
+            }
+        }
+    }
 
     val messages = remember {
         mutableStateListOf(
@@ -132,8 +127,8 @@ fun AiChatScreen(navController: NavController) {
             // Scroll to the user message
             listState.animateScrollToItem(messages.size - 1)
 
-            // Securely call official Gemini API directly from the client
-            val replyText = callGeminiApi(queryText)
+            // Securely call official Gemini API through server-side proxy
+            val replyText = callGeminiApi(queryText, backendApiUrl)
 
             messages.add(ChatMessage(replyText, isUser = false))
             isThinking = false

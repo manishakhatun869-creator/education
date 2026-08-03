@@ -515,7 +515,8 @@ fun AdminDashboardScreen(navController: NavController) {
                                             "noticeBanner" to updatedSettings.noticeBanner,
                                             "theme" to updatedSettings.theme,
                                             "aboutText" to updatedSettings.aboutText,
-                                            "footerText" to updatedSettings.footerText
+                                            "footerText" to updatedSettings.footerText,
+                                            "backendUrl" to updatedSettings.backendUrl
                                         )
 
                                         val docId = appSettingsDocId
@@ -965,6 +966,7 @@ fun AppSettingsPanel(settings: AppSettings, onSave: (AppSettings) -> Unit) {
     var theme by remember { mutableStateOf(settings.theme) }
     var aboutText by remember { mutableStateOf(settings.aboutText) }
     var footerText by remember { mutableStateOf(settings.footerText) }
+    var backendUrl by remember { mutableStateOf(settings.backendUrl) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -980,6 +982,7 @@ fun AppSettingsPanel(settings: AppSettings, onSave: (AppSettings) -> Unit) {
             OutlinedTextField(value = appName, onValueChange = { appName = it }, label = { Text("App Name") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = logoUrl, onValueChange = { logoUrl = it }, label = { Text("Logo URL") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = noticeBanner, onValueChange = { noticeBanner = it }, label = { Text("Notice Banner Bar") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = backendUrl, onValueChange = { backendUrl = it }, label = { Text("Backend API Base URL") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = contactEmail, onValueChange = { contactEmail = it }, label = { Text("Contact Email") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = contactPhone, onValueChange = { contactPhone = it }, label = { Text("Contact Phone") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = whatsappNumber, onValueChange = { whatsappNumber = it }, label = { Text("WhatsApp Number") }, modifier = Modifier.fillMaxWidth())
@@ -998,7 +1001,8 @@ fun AppSettingsPanel(settings: AppSettings, onSave: (AppSettings) -> Unit) {
                             noticeBanner = noticeBanner,
                             theme = theme,
                             aboutText = aboutText,
-                            footerText = footerText
+                            footerText = footerText,
+                            backendUrl = backendUrl
                         )
                     )
                 },
